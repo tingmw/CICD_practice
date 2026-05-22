@@ -1,0 +1,52 @@
+name: Calculator CI/CD
+
+on:
+  push:
+    branches: [ main ]  # 當 main 分支有 push 時觸發
+  pull_request:
+    branches: [ main ]  # 當有人發起 PR 到 main 時觸發
+
+jobs:
+  # --- 第一階段：CI  ---
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: Check Formatting 
+        run: ruff format --check --diff src/     
+      
+      - name: Static Analysis (Linting)
+        run: ruff check src/
+        
+      - name: Type Checking (Mypy)
+        run: mypy src/
+        
+      - name: Run Unit Tests
+        run: pytest test/
+
+  # --- 第二階段：CD (部署) ---
+  # 只有在 main 分支的推送且 quality-check 通過後才會執行
+  deploy:
+    needs: quality-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Message
+        run: echo "CI passed! Deploying to Production Server..."
+      
+      # 使用 curl 觸發 Render 的 Deploy Hook
+      - name: Trigger Render Deploy
+        run: |
+          curl -f -X GET "${{ secrets.RENDER_DEPLOY_HOOK }}"
