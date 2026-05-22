@@ -3,5 +3,5 @@ def add_func(a, b):
 
 
 def sub_func(a, b):
-    tmp = 213
+    # tmp = 213
     return a - b
